@@ -4,6 +4,7 @@ from werkzeug.utils import secure_filename
 import fitz  # PyMuPDF
 import os
 import time
+import uuid
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -32,19 +33,22 @@ def upload_files():
     clear_old_files(UPLOAD_FOLDER)
     clear_old_files(OUTPUT_FOLDER)
     
+    # Generate unique filenames
+    unique_id = str(uuid.uuid4())[:8]  # Short unique ID
+    
     invoice = request.files["invoice"]
     packing_slip = request.files["packing_slip"]
     shipping_label = request.files["shipping_label"]
 
-    invoice_path = os.path.join(UPLOAD_FOLDER, secure_filename(invoice.filename))
-    packing_slip_path = os.path.join(UPLOAD_FOLDER, secure_filename(packing_slip.filename))
-    shipping_label_path = os.path.join(UPLOAD_FOLDER, secure_filename(shipping_label.filename))
+    invoice_path = os.path.join(UPLOAD_FOLDER, f"{unique_id}_invoice.pdf")
+    packing_slip_path = os.path.join(UPLOAD_FOLDER, f"{unique_id}_packing_slip.pdf")
+    shipping_label_path = os.path.join(UPLOAD_FOLDER, f"{unique_id}_shipping_label.pdf")
 
     invoice.save(invoice_path)
     packing_slip.save(packing_slip_path)
     shipping_label.save(shipping_label_path)
 
-    output_pdf = os.path.join(OUTPUT_FOLDER, "merged_shipmerge.pdf")
+    output_pdf = os.path.join(OUTPUT_FOLDER, f"{unique_id}_merged_shipmerge.pdf")
     merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_pdf)
 
     # Delete uploaded files after merging
@@ -76,12 +80,13 @@ def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path
             pix = shipping_label_pdf[page_num].get_pixmap(dpi=300, alpha=False)
             page.insert_image(fitz.Rect(quadrant_width, 0, width, quadrant_height), pixmap=pix)
 
-        # Invoice - Stretch Horizontally Across Bottom Two Quadrants
+        # Invoice - Rotate 90 degrees counterclockwise and Stretch Across Bottom Two Quadrants
         if page_num < len(invoice_pdf):
-            pix = invoice_pdf[page_num].get_pixmap(dpi=300, alpha=False)
-            matrix = fitz.Matrix(1.5, 1.0)  # Scale horizontally to stretch
-            stretched_pix = invoice_pdf[page_num].get_pixmap(matrix=matrix, dpi=300, alpha=False)
-            page.insert_image(fitz.Rect(0, quadrant_height, width, height), pixmap=stretched_pix)
+            matrix = fitz.Matrix(0, 1, -1, 0, width, 0)  # Rotate 90 degrees
+            #rotated_pix = invoice_pdf[page_num].get_pixmap(matrix=matrix, dpi=300, alpha=False)
+            rotated_pix = invoice_pdf[page_num].get_pixmap(matrix=matrix, alpha=False)
+            # Insert into bottom two quadrants
+            page.insert_image(fitz.Rect(0, quadrant_height, width, height), pixmap=rotated_pix)
 
     # Compress PDF without losing quality
     merged_pdf.save(output_path, garbage=4, deflate=True, clean=True)
