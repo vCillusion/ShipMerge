@@ -1,9 +1,12 @@
 from flask import Flask, request, send_file
+from flask_cors import CORS  # Import CORS
 from werkzeug.utils import secure_filename
 import fitz  # PyMuPDF
 import os
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
+
 UPLOAD_FOLDER = "uploads"
 OUTPUT_FOLDER = "output"
 
