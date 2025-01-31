@@ -68,25 +68,26 @@ def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path
 
         # Packing Slip - Top Left Quadrant
         if page_num < len(packing_slip_pdf):
-            pix = packing_slip_pdf[page_num].get_pixmap(dpi=300)
+            pix = packing_slip_pdf[page_num].get_pixmap(dpi=300, alpha=False)
             page.insert_image(fitz.Rect(0, 0, quadrant_width, quadrant_height), pixmap=pix)
 
         # Shipping Label - Top Right Quadrant
         if page_num < len(shipping_label_pdf):
-            pix = shipping_label_pdf[page_num].get_pixmap(dpi=300)
+            pix = shipping_label_pdf[page_num].get_pixmap(dpi=300, alpha=False)
             page.insert_image(fitz.Rect(quadrant_width, 0, width, quadrant_height), pixmap=pix)
 
         # Invoice - Bottom Two Quadrants (Full Horizontal Alignment, Rotated if Needed)
         if page_num < len(invoice_pdf):
-            pix = invoice_pdf[page_num].get_pixmap(dpi=300)
+            pix = invoice_pdf[page_num].get_pixmap(dpi=300, alpha=False)
             if pix.width < pix.height:  # Rotate only if the invoice is vertical
                 matrix = fitz.Matrix(0, 1, -1, 0, width, 0)  # Rotate 90 degrees
-                rotated_pix = invoice_pdf[page_num].get_pixmap(matrix=matrix, dpi=300)
+                rotated_pix = invoice_pdf[page_num].get_pixmap(matrix=matrix, dpi=300, alpha=False)
             else:
                 rotated_pix = pix
             page.insert_image(fitz.Rect(0, quadrant_height, width, height), pixmap=rotated_pix)
 
-    merged_pdf.save(output_path)
+    # Compress PDF without losing quality
+    merged_pdf.save(output_path, garbage=4, deflate=True, clean=True)
     merged_pdf.close()
     invoice_pdf.close()
     packing_slip_pdf.close()
