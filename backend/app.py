@@ -28,7 +28,7 @@ def clear_old_files(folder, age_limit=300):  # 300 seconds = 5 minutes
 @app.route("/upload", methods=["POST"])
 def upload_files():
     if "invoice" not in request.files or "packing_slip" not in request.files or "shipping_label" not in request.files:
-        return {"error": "All three PDFs (invoice, packing slip, shipping label) are required!"}, 400
+        return {"error": "All three PDFs (invoice, packing_slip, shipping_label) are required!"}, 400
     
     clear_old_files(UPLOAD_FOLDER)
     clear_old_files(OUTPUT_FOLDER)
@@ -67,25 +67,25 @@ def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path
     width, height = 595, 842  # A4 Size
     quadrant_width, quadrant_height = width / 2, height / 2  # Divide into 4 equal quadrants
 
-    for page_num in range(max(len(invoice_pdf), len(packing_slip_pdf), len(shipping_label_pdf))):
+    for i in range(2):  # Generate two pages, one normal and one mirrored
         page = merged_pdf.new_page(width=width, height=height)
+        mirror = i % 2 == 1  # Mirror every alternate page
 
         # Packing Slip - Top Left Quadrant
-        if page_num < len(packing_slip_pdf):
-            pix = packing_slip_pdf[page_num].get_pixmap(dpi=300, alpha=False)
-            page.insert_image(fitz.Rect(0, 0, quadrant_width, quadrant_height), pixmap=pix)
+        if len(packing_slip_pdf) > i:
+            pix = packing_slip_pdf[i].get_pixmap(dpi=300, alpha=False)
+            page.insert_image(fitz.Rect(quadrant_width if mirror else 0, 0, width if mirror else quadrant_width, quadrant_height), pixmap=pix)
 
         # Shipping Label - Top Right Quadrant
-        if page_num < len(shipping_label_pdf):
-            pix = shipping_label_pdf[page_num].get_pixmap(dpi=300, alpha=False)
-            page.insert_image(fitz.Rect(quadrant_width, 0, width, quadrant_height), pixmap=pix)
+        if len(shipping_label_pdf) > i:
+            pix = shipping_label_pdf[i].get_pixmap(dpi=300, alpha=False)
+            page.insert_image(fitz.Rect(0 if mirror else quadrant_width, 0, quadrant_width if mirror else width, quadrant_height), pixmap=pix)
 
         # Invoice - Rotate 90 degrees counterclockwise and Stretch Across Bottom Two Quadrants
-        if page_num < len(invoice_pdf):
-            matrix = fitz.Matrix(0, 1, -1, 0, width, 0)  # Rotate 90 degrees
-            #rotated_pix = invoice_pdf[page_num].get_pixmap(matrix=matrix, dpi=300, alpha=False)
-            rotated_pix = invoice_pdf[page_num].get_pixmap(matrix=matrix, alpha=False)
+        if len(invoice_pdf) > i:
             # Insert into bottom two quadrants
+            matrix = fitz.Matrix(0, 1 if mirror else -1, -1 if mirror else 1, 0, width, 0)  # Rotate 90 degrees
+            rotated_pix = invoice_pdf[i].get_pixmap(matrix=matrix, alpha=False)
             page.insert_image(fitz.Rect(0, quadrant_height, width, height), pixmap=rotated_pix)
 
     # Compress PDF without losing quality
