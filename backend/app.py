@@ -41,25 +41,27 @@ def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path
     shipping_label_pdf = fitz.open(shipping_label_path)
     merged_pdf = fitz.open()
 
-    for page_num in range(min(len(invoice_pdf), len(packing_slip_pdf), len(shipping_label_pdf))):
-        page = merged_pdf.new_page(width=595, height=842)
-        
-        # Fix: Use filename argument instead of Pixmap
-        page.insert_image(fitz.Rect(0, 0, 595, 421), invoice_pdf[page_num].get_pixmap())
-        page.insert_image(fitz.Rect(0, 421, 595, 842), packing_slip_pdf[page_num].get_pixmap())
+    for page_num in range(max(len(invoice_pdf), len(packing_slip_pdf), len(shipping_label_pdf))):
+        page = merged_pdf.new_page(width=595, height=842)  # A4 Size
 
-        # If Shipping Label contains 2 pages (Label & Invoice)
-        if len(shipping_label_pdf) > 1:
-            shipping_label_page1 = shipping_label_pdf[0]  # First page (Shipping Label)
-            shipping_label_page2 = shipping_label_pdf[1]  # Second page (Invoice)
+        # Insert Invoice (Top Half)
+        if page_num < len(invoice_pdf):
+            invoice_page = invoice_pdf[page_num]
+            pix = invoice_page.get_pixmap()
+            page.insert_image(fitz.Rect(0, 0, 595, 421), pixmap=pix)
 
+        # Insert Packing Slip (Bottom Half)
+        if page_num < len(packing_slip_pdf):
+            packing_slip_page = packing_slip_pdf[page_num]
+            pix = packing_slip_page.get_pixmap()
+            page.insert_image(fitz.Rect(0, 421, 595, 842), pixmap=pix)
+
+        # Handle Shipping Label (2 pages: First page = Label, Second page = Invoice)
+        if page_num < len(shipping_label_pdf):
             new_page = merged_pdf.new_page(width=595, height=842)
-            new_page.insert_image(fitz.Rect(0, 0, 595, 421), filename=shipping_label_page1)
-            new_page.insert_image(fitz.Rect(0, 421, 595, 842), filename=shipping_label_page2)
-        else:
-            new_page = merged_pdf.new_page(width=595, height=842)
-            new_page.insert_image(fitz.Rect(0, 421, 595, 842), filename=shipping_label_path)
-
+            shipping_label_page = shipping_label_pdf[page_num]
+            pix = shipping_label_page.get_pixmap()
+            new_page.insert_image(fitz.Rect(0, 0, 595, 842), pixmap=pix)  # Full-page Shipping Label
 
     merged_pdf.save(output_path)
     merged_pdf.close()
