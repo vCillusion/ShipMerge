@@ -21,8 +21,9 @@ function App() {
     formData.append("packing_slip", packingSlip);
     formData.append("shipping_label", shippingLabel);
 
+    const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:5000" || "https://shipmerge.onrender.com";
     try {
-      const response = await axios.post("https://shipmerge.onrender.com/upload", formData, {
+      const response = await axios.post(`${BACKEND_URL}/upload`, formData, {
         responseType: "blob",
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));

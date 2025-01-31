@@ -3,6 +3,7 @@ from flask_cors import CORS  # Import CORS
 from werkzeug.utils import secure_filename
 import fitz  # PyMuPDF
 import os
+import time
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -13,10 +14,23 @@ OUTPUT_FOLDER = "output"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
+def clear_old_files(folder, age_limit=300):  # 300 seconds = 5 minutes
+    current_time = time.time()
+    for file in os.listdir(folder):
+        file_path = os.path.join(folder, file)
+        try:
+            if os.path.isfile(file_path) and (current_time - os.path.getmtime(file_path)) > age_limit:
+                os.remove(file_path)
+        except Exception as e:
+            print(f"Error deleting file {file_path}: {e}")
+
 @app.route("/upload", methods=["POST"])
 def upload_files():
     if "invoice" not in request.files or "packing_slip" not in request.files or "shipping_label" not in request.files:
         return {"error": "All three PDFs (invoice, packing slip, shipping label) are required!"}, 400
+    
+    clear_old_files(UPLOAD_FOLDER)
+    clear_old_files(OUTPUT_FOLDER)
     
     invoice = request.files["invoice"]
     packing_slip = request.files["packing_slip"]
@@ -33,6 +47,11 @@ def upload_files():
     output_pdf = os.path.join(OUTPUT_FOLDER, "merged_shipmerge.pdf")
     merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_pdf)
 
+    # Delete uploaded files after merging
+    os.remove(invoice_path)
+    os.remove(packing_slip_path)
+    os.remove(shipping_label_path)
+
     return send_file(output_pdf, as_attachment=True)
 
 def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path):
@@ -41,27 +60,31 @@ def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path
     shipping_label_pdf = fitz.open(shipping_label_path)
     merged_pdf = fitz.open()
 
+    width, height = 595, 842  # A4 Size
+    quadrant_width, quadrant_height = width / 2, height / 2  # Divide into 4 equal quadrants
+
     for page_num in range(max(len(invoice_pdf), len(packing_slip_pdf), len(shipping_label_pdf))):
-        page = merged_pdf.new_page(width=595, height=842)  # A4 Size
+        page = merged_pdf.new_page(width=width, height=height)
 
-        # Insert Invoice (Top Half)
-        if page_num < len(invoice_pdf):
-            invoice_page = invoice_pdf[page_num]
-            pix = invoice_page.get_pixmap()
-            page.insert_image(fitz.Rect(0, 0, 595, 421), pixmap=pix)
-
-        # Insert Packing Slip (Bottom Half)
+        # Packing Slip - Top Left Quadrant
         if page_num < len(packing_slip_pdf):
-            packing_slip_page = packing_slip_pdf[page_num]
-            pix = packing_slip_page.get_pixmap()
-            page.insert_image(fitz.Rect(0, 421, 595, 842), pixmap=pix)
+            pix = packing_slip_pdf[page_num].get_pixmap()
+            page.insert_image(fitz.Rect(0, 0, quadrant_width, quadrant_height), pixmap=pix)
 
-        # Handle Shipping Label (2 pages: First page = Label, Second page = Invoice)
+        # Shipping Label - Top Right Quadrant
         if page_num < len(shipping_label_pdf):
-            new_page = merged_pdf.new_page(width=595, height=842)
-            shipping_label_page = shipping_label_pdf[page_num]
-            pix = shipping_label_page.get_pixmap()
-            new_page.insert_image(fitz.Rect(0, 0, 595, 842), pixmap=pix)  # Full-page Shipping Label
+            pix = shipping_label_pdf[page_num].get_pixmap()
+            page.insert_image(fitz.Rect(quadrant_width, 0, width, quadrant_height), pixmap=pix)
+
+        # Invoice - Bottom Two Quadrants (Full Horizontal Alignment, Rotated if Needed)
+        if page_num < len(invoice_pdf):
+            pix = invoice_pdf[page_num].get_pixmap()
+            if pix.width < pix.height:  # Rotate only if the invoice is vertical
+                matrix = fitz.Matrix(0, 1, -1, 0, width, 0)  # Rotate 90 degrees
+                rotated_pix = invoice_pdf[page_num].get_pixmap(matrix=matrix)
+            else:
+                rotated_pix = pix
+            page.insert_image(fitz.Rect(0, quadrant_height, width, height), pixmap=rotated_pix)
 
     merged_pdf.save(output_path)
     merged_pdf.close()
