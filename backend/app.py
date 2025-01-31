@@ -67,7 +67,7 @@ def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path
     width, height = 595, 842  # A4 Size
     quadrant_width, quadrant_height = width / 2, height / 2  # Divide into 4 equal quadrants
 
-    for i in range(2):  # Generate two pages, one normal and one mirrored
+    for i in range(max(len(invoice_pdf), len(packing_slip_pdf), len(shipping_label_pdf))):  # Generate two pages, one normal and one mirrored
         page = merged_pdf.new_page(width=width, height=height)
         mirror = i % 2 == 1  # Mirror every alternate page
 
@@ -84,9 +84,9 @@ def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path
         # Invoice - Rotate 90 degrees counterclockwise and Stretch Across Bottom Two Quadrants
         if len(invoice_pdf) > i:
             # Insert into bottom two quadrants
-            matrix = fitz.Matrix(0, 1 if mirror else -1, -1 if mirror else 1, 0, width, 0)  # Rotate 90 degrees
-            rotated_pix = invoice_pdf[i].get_pixmap(matrix=matrix, alpha=False)
-            page.insert_image(fitz.Rect(0, quadrant_height, width, height), pixmap=rotated_pix)
+            invoice_pdf[i].set_rotation(90 if mirror else -90)
+            high_res_pix = invoice_pdf[i].get_pixmap(dpi=300, alpha=False)  # Get high-quality image first
+            page.insert_image(fitz.Rect(0, quadrant_height, width, height), pixmap=high_res_pix)
 
     # Compress PDF without losing quality
     merged_pdf.save(output_path, garbage=4, deflate=True, clean=True)
