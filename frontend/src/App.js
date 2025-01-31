@@ -18,7 +18,7 @@ function App() {
     formData.append("packing_slip", packingSlip);
     formData.append("shipping_label", shippingLabel);
 
-    const response = await axios.post("https://your-flask-app.onrender.com/upload", formData, {
+    const response = await axios.post("https://shipmerge.onrender.com/upload", formData, {
         responseType: "blob",
       });
 
