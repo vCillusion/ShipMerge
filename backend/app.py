@@ -43,13 +43,23 @@ def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path
 
     for page_num in range(min(len(invoice_pdf), len(packing_slip_pdf), len(shipping_label_pdf))):
         page = merged_pdf.new_page(width=595, height=842)
-
+        
+        # Fix: Use filename argument instead of Pixmap
         page.insert_image(fitz.Rect(0, 0, 595, 421), invoice_pdf[page_num].get_pixmap())
         page.insert_image(fitz.Rect(0, 421, 595, 842), packing_slip_pdf[page_num].get_pixmap())
 
-        if page_num < len(shipping_label_pdf):
+        # If Shipping Label contains 2 pages (Label & Invoice)
+        if len(shipping_label_pdf) > 1:
+            shipping_label_page1 = shipping_label_pdf[0]  # First page (Shipping Label)
+            shipping_label_page2 = shipping_label_pdf[1]  # Second page (Invoice)
+
             new_page = merged_pdf.new_page(width=595, height=842)
-            new_page.insert_image(fitz.Rect(0, 421, 595, 842), shipping_label_pdf[page_num].get_pixmap())
+            new_page.insert_image(fitz.Rect(0, 0, 595, 421), filename=shipping_label_page1)
+            new_page.insert_image(fitz.Rect(0, 421, 595, 842), filename=shipping_label_page2)
+        else:
+            new_page = merged_pdf.new_page(width=595, height=842)
+            new_page.insert_image(fitz.Rect(0, 421, 595, 842), filename=shipping_label_path)
+
 
     merged_pdf.save(output_path)
     merged_pdf.close()
