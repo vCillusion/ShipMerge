@@ -7,6 +7,8 @@ function App() {
   const [shippingLabel, setShippingLabel] = useState(null);
   const [mergedPdf, setMergedPdf] = useState(null);
 
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "https://shipmerge.onrender.com";
+
   const handleUpload = async () => {
     if (!invoice || !packingSlip || !shippingLabel) {
       alert("Please upload all three PDFs!");
@@ -18,9 +20,9 @@ function App() {
     formData.append("packing_slip", packingSlip);
     formData.append("shipping_label", shippingLabel);
 
-    const response = await axios.post("https://shipmerge.onrender.com/upload", formData, {
-        responseType: "blob",
-      });
+    const response = await axios.post(`${BACKEND_URL}/upload`, formData, {
+      responseType: "blob",
+    });
 
     const url = window.URL.createObjectURL(new Blob([response.data]));
     setMergedPdf(url);
