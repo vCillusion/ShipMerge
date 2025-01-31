@@ -1,0 +1,6 @@
+flask
+flask-cors
+werkzeug
+pymupdf
+PyPDF2
+gunicorn
