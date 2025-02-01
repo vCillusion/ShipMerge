@@ -25,6 +25,37 @@ def clear_old_files(folder, age_limit=300):  # 300 seconds = 5 minutes
         except Exception as e:
             print(f"Error deleting file {file_path}: {e}")
 
+@app.route("/preview", methods=["POST"])
+def preview_files():
+    if "invoice" not in request.files or "packing_slip" not in request.files or "shipping_label" not in request.files:
+        return {"error": "All three PDFs (invoice, packing_slip, shipping_label) are required!"}, 400
+    
+    rotate_label = request.form.get("rotate_label", "portrait")
+    rotate_angle = 90 if rotate_label == "landscape" else 0
+    trim_percentage = int(request.form.get("trim_percentage", 100))
+    
+    clear_old_files(UPLOAD_FOLDER)
+    clear_old_files(OUTPUT_FOLDER)
+    
+    unique_id = str(uuid.uuid4())[:8]
+    
+    invoice = request.files["invoice"]
+    packing_slip = request.files["packing_slip"]
+    shipping_label = request.files["shipping_label"]
+
+    invoice_path = os.path.join(UPLOAD_FOLDER, f"{unique_id}_invoice.pdf")
+    packing_slip_path = os.path.join(UPLOAD_FOLDER, f"{unique_id}_packing_slip.pdf")
+    shipping_label_path = os.path.join(UPLOAD_FOLDER, f"{unique_id}_shipping_label.pdf")
+
+    invoice.save(invoice_path)
+    packing_slip.save(packing_slip_path)
+    shipping_label.save(shipping_label_path)
+
+    output_pdf = os.path.join(OUTPUT_FOLDER, f"{unique_id}_preview.pdf")
+    merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_pdf, rotate_angle, trim_percentage)
+    
+    return send_file(output_pdf, as_attachment=False, mimetype='application/pdf')
+
 @app.route("/upload", methods=["POST"])
 def upload_files():
     if "invoice" not in request.files or "packing_slip" not in request.files or "shipping_label" not in request.files:
@@ -60,7 +91,7 @@ def upload_files():
     os.remove(packing_slip_path)
     os.remove(shipping_label_path)
 
-    return send_file(output_pdf, as_attachment=True)
+    return send_file(output_pdf, as_attachment=True, mimetype='application/pdf')
 
 def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path, rotate_angle, trim_percentage):
     invoice_pdf = fitz.open(invoice_path)
