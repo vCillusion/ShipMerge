@@ -30,6 +30,9 @@ def upload_files():
     if "invoice" not in request.files or "packing_slip" not in request.files or "shipping_label" not in request.files:
         return {"error": "All three PDFs (invoice, packing_slip, shipping_label) are required!"}, 400
     
+    rotate_label = request.form.get("rotate_label", "portrait")  # Get rotation setting from UI
+    rotate_angle = 90 if rotate_label == "landscape" else 0  # Set rotation angle
+    
     clear_old_files(UPLOAD_FOLDER)
     clear_old_files(OUTPUT_FOLDER)
     
@@ -49,7 +52,7 @@ def upload_files():
     shipping_label.save(shipping_label_path)
 
     output_pdf = os.path.join(OUTPUT_FOLDER, f"{unique_id}_merged_shipmerge.pdf")
-    merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_pdf)
+    merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_pdf, rotate_angle)
 
     # Delete uploaded files after merging
     os.remove(invoice_path)
@@ -58,7 +61,7 @@ def upload_files():
 
     return send_file(output_pdf, as_attachment=True)
 
-def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path):
+def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path, rotate_angle):
     invoice_pdf = fitz.open(invoice_path)
     packing_slip_pdf = fitz.open(packing_slip_path)
     shipping_label_pdf = fitz.open(shipping_label_path)
@@ -67,7 +70,7 @@ def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path
     width, height = 595, 842  # A4 Size
     quadrant_width, quadrant_height = width / 2, height / 2  # Divide into 4 equal quadrants
 
-    for i in range(max(len(invoice_pdf), len(packing_slip_pdf), len(shipping_label_pdf))):  # Generate two pages, one normal and one mirrored
+    for i in range(max(len(invoice_pdf), len(packing_slip_pdf), len(shipping_label_pdf))):
         page = merged_pdf.new_page(width=width, height=height)
         mirror = i % 2 == 1  # Mirror every alternate page
 
@@ -76,14 +79,16 @@ def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path
             pix = packing_slip_pdf[i].get_pixmap(dpi=300, alpha=False)
             page.insert_image(fitz.Rect(quadrant_width if mirror else 0, 0, width if mirror else quadrant_width, quadrant_height), pixmap=pix)
 
-        # Shipping Label - Top Right Quadrant
+        # Shipping Label - Top Right Quadrant with Rotation
         if len(shipping_label_pdf) > i:
-            pix = shipping_label_pdf[i].get_pixmap(dpi=300, alpha=False)
-            page.insert_image(fitz.Rect(0 if mirror else quadrant_width, 0, quadrant_width if mirror else width, quadrant_height), pixmap=pix)
+            label_pix = shipping_label_pdf[i].get_pixmap(dpi=300, alpha=False)
+            if rotate_angle:
+                shipping_label_pdf[i].set_rotation(rotate_angle)
+                label_pix = shipping_label_pdf[i].get_pixmap(dpi=300, alpha=False)
+            page.insert_image(fitz.Rect(0 if mirror else quadrant_width, 0, quadrant_width if mirror else width, quadrant_height), pixmap=label_pix)
 
-        # Invoice - Rotate 90 degrees counterclockwise and Stretch Across Bottom Two Quadrants
+        # Invoice - Stretch Across Bottom Two Quadrants
         if len(invoice_pdf) > i:
-            # Insert into bottom two quadrants
             invoice_pdf[i].set_rotation(90 if mirror else -90)
             high_res_pix = invoice_pdf[i].get_pixmap(dpi=300, alpha=False)  # Get high-quality image first
             page.insert_image(fitz.Rect(0, quadrant_height, width, height), pixmap=high_res_pix)

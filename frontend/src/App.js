@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { Button, Card, CardContent, Typography, CircularProgress } from "@mui/material";
+import { Button, Card, CardContent, Typography, CircularProgress, FormControlLabel, Checkbox } from "@mui/material";
 
 function App() {
   const [invoice, setInvoice] = useState(null);
@@ -8,6 +8,7 @@ function App() {
   const [shippingLabel, setShippingLabel] = useState(null);
   const [mergedPdf, setMergedPdf] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [rotateLabel, setRotateLabel] = useState(false);
 
   const handleUpload = async () => {
     if (!invoice || !packingSlip || !shippingLabel) {
@@ -20,6 +21,7 @@ function App() {
     formData.append("invoice", invoice);
     formData.append("packing_slip", packingSlip);
     formData.append("shipping_label", shippingLabel);
+    formData.append("rotate_label", rotateLabel ? "landscape" : "portrait");
 
     const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:5000";
     try {
@@ -61,6 +63,11 @@ function App() {
         </CardContent>
       </Card>
 
+      <FormControlLabel
+        control={<Checkbox checked={rotateLabel} defaultChecked={false} onChange={(e) => setRotateLabel(e.target.checked)} />}
+        label="Rotate Shipping Label to Landscape"
+      />
+      <br />
       <Button 
         variant="contained" 
         color="primary" 
