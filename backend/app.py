@@ -32,6 +32,7 @@ def upload_files():
     
     rotate_label = request.form.get("rotate_label", "portrait")  # Get rotation setting from UI
     rotate_angle = 90 if rotate_label == "landscape" else 0  # Set rotation angle
+    trim_percentage = int(request.form.get("trim_percentage", 100))  # Get trim percentage from UI
     
     clear_old_files(UPLOAD_FOLDER)
     clear_old_files(OUTPUT_FOLDER)
@@ -52,7 +53,7 @@ def upload_files():
     shipping_label.save(shipping_label_path)
 
     output_pdf = os.path.join(OUTPUT_FOLDER, f"{unique_id}_merged_shipmerge.pdf")
-    merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_pdf, rotate_angle)
+    merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_pdf, rotate_angle, trim_percentage)
 
     # Delete uploaded files after merging
     os.remove(invoice_path)
@@ -61,7 +62,7 @@ def upload_files():
 
     return send_file(output_pdf, as_attachment=True)
 
-def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path, rotate_angle):
+def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path, rotate_angle, trim_percentage):
     invoice_pdf = fitz.open(invoice_path)
     packing_slip_pdf = fitz.open(packing_slip_path)
     shipping_label_pdf = fitz.open(shipping_label_path)
@@ -79,12 +80,17 @@ def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path
             pix = packing_slip_pdf[i].get_pixmap(dpi=300, alpha=False)
             page.insert_image(fitz.Rect(quadrant_width if mirror else 0, 0, width if mirror else quadrant_width, quadrant_height), pixmap=pix)
 
-        # Shipping Label - Top Right Quadrant with Rotation
+        # Shipping Label - Top Right Quadrant with Rotation and Trim
         if len(shipping_label_pdf) > i:
-            label_pix = shipping_label_pdf[i].get_pixmap(dpi=300, alpha=False)
+            page_rect = shipping_label_pdf[i].rect
+            trimmed_width = int(page_rect.width * (trim_percentage / 100))
+            trim_rect = fitz.Rect(0, 0, trimmed_width, page_rect.height)
+            
             if rotate_angle:
                 shipping_label_pdf[i].set_rotation(rotate_angle)
-                label_pix = shipping_label_pdf[i].get_pixmap(dpi=300, alpha=False)
+
+            label_pix = shipping_label_pdf[i].get_pixmap(matrix=fitz.Matrix(1, 1), clip=trim_rect, dpi=300, alpha=False)
+            
             page.insert_image(fitz.Rect(0 if mirror else quadrant_width, 0, quadrant_width if mirror else width, quadrant_height), pixmap=label_pix)
 
         # Invoice - Stretch Across Bottom Two Quadrants

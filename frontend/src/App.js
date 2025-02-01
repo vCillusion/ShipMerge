@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { Button, Card, CardContent, Typography, CircularProgress, FormControlLabel, Checkbox } from "@mui/material";
+import { Button, Card, CardContent, Typography, CircularProgress, FormControlLabel, Checkbox, TextField } from "@mui/material";
 
 function App() {
   const [invoice, setInvoice] = useState(null);
@@ -9,6 +9,7 @@ function App() {
   const [mergedPdf, setMergedPdf] = useState(null);
   const [loading, setLoading] = useState(false);
   const [rotateLabel, setRotateLabel] = useState(false);
+  const [trimPercentage, setTrimPercentage] = useState(100);
 
   const handleUpload = async () => {
     if (!invoice || !packingSlip || !shippingLabel) {
@@ -22,6 +23,7 @@ function App() {
     formData.append("packing_slip", packingSlip);
     formData.append("shipping_label", shippingLabel);
     formData.append("rotate_label", rotateLabel ? "landscape" : "portrait");
+    formData.append("trim_percentage", trimPercentage);
 
     const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:5000";
     try {
@@ -63,9 +65,21 @@ function App() {
         </CardContent>
       </Card>
 
+      <div style={{ marginBottom: '10px' }}></div>
+      <div style={{ marginBottom: '20px' }}></div>
+      <br />
       <FormControlLabel
         control={<Checkbox checked={rotateLabel} defaultChecked={false} onChange={(e) => setRotateLabel(e.target.checked)} />}
         label="Rotate Shipping Label to Landscape"
+      />
+      <br />
+      <TextField fullWidth
+        label="Trim Shipping Label (%)"
+        type="number"
+        value={trimPercentage}
+        onChange={(e) => setTrimPercentage(e.target.value)}
+        inputProps={{ min: 10, max: 100 }}
+        style={{ marginTop: "10px" }}
       />
       <br />
       <Button 
