@@ -94,9 +94,9 @@ def upload_files():
     return send_file(output_pdf, as_attachment=True, mimetype='application/pdf')
 
 def merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_path, rotate_angle, trim_percentage):
-    invoice_pdf = fitz.open(invoice_path)
-    packing_slip_pdf = fitz.open(packing_slip_path)
-    shipping_label_pdf = fitz.open(shipping_label_path)
+    invoice_pdf = fitz.open(invoice_path, filetype="pdf")
+    packing_slip_pdf = fitz.open(packing_slip_path, filetype="pdf")
+    shipping_label_pdf = fitz.open(shipping_label_path, filetype="pdf")
     merged_pdf = fitz.open()
 
     width, height = 595, 842  # A4 Size
