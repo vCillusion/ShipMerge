@@ -15,7 +15,7 @@ OUTPUT_FOLDER = "output"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-def clear_old_files(folder, age_limit=300):  # 300 seconds = 5 minutes
+def clear_old_files(folder, age_limit=10):  # 300 seconds = 5 minutes
     current_time = time.time()
     for file in os.listdir(folder):
         file_path = os.path.join(folder, file)
