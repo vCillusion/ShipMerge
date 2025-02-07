@@ -80,21 +80,54 @@ function App() {
       <Card variant="outlined" style={{ padding: "20px", marginBottom: "20px" }}>
         <CardContent>
           <Typography variant="h6">Upload Invoice</Typography>
-          <input type="file" onChange={(e) => setInvoice(e.target.files[0])} />
+          <input 
+            type="file" 
+            accept="application/pdf"  // 🔥 Restrict to PDFs only
+            onChange={(e) => {
+              const file = e.target.files[0];
+              if (file && file.type !== "application/pdf") {
+                alert("Only PDF files are allowed!");
+                return;
+              }
+              setInvoice(file);
+            }} 
+          />
         </CardContent>
       </Card>
 
       <Card variant="outlined" style={{ padding: "20px", marginBottom: "20px" }}>
         <CardContent>
           <Typography variant="h6">Upload Packing Slip</Typography>
-          <input type="file" onChange={(e) => setPackingSlip(e.target.files[0])} />
+          <input 
+            type="file" 
+            accept="application/pdf"  // 🔥 Restrict to PDFs only
+            onChange={(e) => {
+              const file = e.target.files[0];
+              if (file && file.type !== "application/pdf") {
+                alert("Only PDF files are allowed!");
+                return;
+              }
+              setPackingSlip(file);
+            }} 
+          />
         </CardContent>
       </Card>
 
       <Card variant="outlined" style={{ padding: "20px", marginBottom: "20px" }}>
         <CardContent>
           <Typography variant="h6">Upload Shipping Label</Typography>
-          <input type="file" onChange={(e) => setShippingLabel(e.target.files[0])} />
+          <input 
+            type="file" 
+            accept="application/pdf"  // 🔥 Restrict to PDFs only
+            onChange={(e) => {
+              const file = e.target.files[0];
+              if (file && file.type !== "application/pdf") {
+                alert("Only PDF files are allowed!");
+                return;
+              }
+              setShippingLabel(file);
+            }} 
+          />
         </CardContent>
       </Card>
 
