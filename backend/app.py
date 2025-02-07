@@ -60,17 +60,16 @@ def preview_files():
 def upload_files():
     if "invoice" not in request.files or "packing_slip" not in request.files or "shipping_label" not in request.files:
         return {"error": "All three PDFs (invoice, packing_slip, shipping_label) are required!"}, 400
-    
-    rotate_label = request.form.get("rotate_label", "portrait")  # Get rotation setting from UI
-    rotate_angle = 90 if rotate_label == "landscape" else 0  # Set rotation angle
-    trim_percentage = int(request.form.get("trim_percentage", 100))  # Get trim percentage from UI
-    
+
+    rotate_label = request.form.get("rotate_label", "portrait")  
+    rotate_angle = 90 if rotate_label == "landscape" else 0  
+    trim_percentage = int(request.form.get("trim_percentage", 100))  
+
     clear_old_files(UPLOAD_FOLDER)
     clear_old_files(OUTPUT_FOLDER)
-    
-    # Generate unique filenames
-    unique_id = str(uuid.uuid4())[:8]  # Short unique ID
-    
+
+    unique_id = str(uuid.uuid4())[:8]  
+
     invoice = request.files["invoice"]
     packing_slip = request.files["packing_slip"]
     shipping_label = request.files["shipping_label"]
@@ -83,10 +82,21 @@ def upload_files():
     packing_slip.save(packing_slip_path)
     shipping_label.save(shipping_label_path)
 
+    # ✅ Validate if uploaded files are proper PDFs
+    for file_path in [invoice_path, packing_slip_path, shipping_label_path]:
+        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+            return {"error": f"File {file_path} is missing or empty."}, 400
+
+        try:
+            with fitz.open(file_path) as test_pdf:
+                if test_pdf.is_closed or len(test_pdf) == 0:
+                    return {"error": f"File {file_path} is not a valid PDF."}, 400
+        except Exception as e:
+            return {"error": f"Failed to open {file_path} as PDF: {str(e)}"}, 400
+
     output_pdf = os.path.join(OUTPUT_FOLDER, f"{unique_id}_merged_shipmerge.pdf")
     merge_pdfs(invoice_path, packing_slip_path, shipping_label_path, output_pdf, rotate_angle, trim_percentage)
 
-    # Delete uploaded files after merging
     os.remove(invoice_path)
     os.remove(packing_slip_path)
     os.remove(shipping_label_path)
